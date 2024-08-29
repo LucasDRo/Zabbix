@@ -1,0 +1,25 @@
+#!/bin/bash
+service=$1
+
+#TESTA QUAL O TIPO DE SERVIÇO A SER ANALISADO
+if [[ $service == "status" ]]; then
+        #TESTA SE O SERVIÇO ESTÁ ATIVO
+        active=$(systemctl status $1 | grep "Active: activating (auto-restart)" | wc -l)
+        #TESTA SE O STATUS ESTÁ ATIVO
+        var=$(systemctl status status | grep "curl http://localhost/status.php  (code=exited, status=0/SUCCESS)" | wc -l)
+elif [[ $service == "backup" ]]; then
+        var=$(systemctl status backup | grep "tar: Removing leading" | wc -l)
+elif [[ $service == "monitoramento" ]]; then
+        #TESTA SE O SERVIÇO ESTÁ ATIVO
+        active=$(systemctl status $1 | grep "Active: activating (auto-restart)" | wc -l)
+        #TESTA SE O monitoramento ESTÁ ATIVO
+        var=$(systemctl status monitoramento | grep "curl http://localhost/monitoramento.php  (code=exited, status=0/SUCCESS)" | wc -l)
+fi
+#RETORNA A CONDIÇÃO DO SERVIÇO
+if [[ $var != 0 && $active != 0 ]]; then
+        echo 1
+elif [[ $var != 0 && $active == 0 ]]; then
+        echo 2
+else
+        echo 0
+fi
