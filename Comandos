@@ -1,6 +1,0 @@
-Comandos de log
-tail -40f /var/log/zabbix-agent/zabbix_agentd.log
-
-Comandos teste de stress
-apt-get install stress
-stress --cpu 4 --timeout 60s
