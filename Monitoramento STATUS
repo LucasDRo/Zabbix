@@ -1,0 +1,54 @@
+#!/bin/bash
+
+cont=0
+active=$(systemctl status status | grep "Active: activating (auto-restart)" | wc -l)
+
+if [[ $active == 0 ]]; then
+        echo 0
+        exit 1
+fi
+
+# Define o caminho do arquivo de log
+logfile="/var/log/apache2/access.log"
+
+# Função para obter as últimas 20 linhas do arquivo usando awk
+get_last_20_lines() {
+    awk 'NR > (total - 20) {print}' total=$(wc -l < "$logfile") "$logfile"
+}
+
+# Verifica as entradas específicas nas últimas 20 linhas do arquivo de log do Apache
+var=$(get_last_20_lines | grep -c ' "GET /status.php HTTP/1.1" 200 ')
+var2=$(get_last_20_lines | grep -c ' "GET /status.php HTTP/1.1" 500 ')
+
+# Se a entrada com status 200 for encontrada
+if [[ $var -ne 0 ]]; then
+    echo 1
+# Se a entrada com status 500 for encontrada
+elif [[ $var2 -ne 0 ]]; then
+    echo 0
+else
+    # Se nenhuma das entradas for encontrada, inicia o loop de verificação
+    while [[ $var -eq 0 && $var2 -eq 0 ]]; do
+        sleep 1       
+        cont=$((cont + 1))  # Incrementa a contagem
+
+        # Verifica novamente as entradas no log
+        var=$(get_last_20_lines | grep -c ' "GET /status.php HTTP/1.1" 200 ')
+        var2=$(get_last_20_lines | grep -c ' "GET /status.php HTTP/1.1" 500 ')
+
+        # Se a contagem de iterações exceder 12, sai do loop
+        if [[ $cont -gt 12 ]]; then
+            echo 0
+            exit 1
+        fi
+    done
+
+    # Se a entrada com status 200 for encontrada após o loop
+    if [[ $var -ne 0 ]]; then    
+        echo 1
+    else
+        echo 0
+    fi
+fi
+
+#LDR-24_09_17-V1
