@@ -1,0 +1,65 @@
+#!/bin/bash
+
+active=$(systemctl status backup | grep "Active: activ" | wc -l)
+
+if [[ $active == 0 ]]; then
+        echo 0
+        exit 1
+fi
+
+ENV_FILE="/var/www/html/supervisory_iprime/.env"
+DB_USER=$(grep '^DB_USER_ICONN=' "$ENV_FILE" | cut -d '=' -f2-)
+DB_PASS=$(grep '^DB_PASS_ICONN=' "$ENV_FILE" | cut -d '=' -f2-)
+DB_NAME=$(grep '^DB_NAME_ICONN=' "$ENV_FILE" | cut -d '=' -f2-)
+NOME_FAZ=$(mysql -u$DB_USER -p$DB_PASS -sse "SELECT NOME_FAZ FROM farm WHERE CODE != 0 LIMIT 1;" $DB_NAME | tr -d ' ')
+
+
+# Diretório onde os arquivos estão localizados
+Diretorio="/home/pi/Documentos/Backups/$NOME_FAZ"
+DiretorioFinal="$Diretorio"  # Ajustado para o diretório correto
+
+# Encontrar o arquivo com a data mais recente
+ArquivoRecente=$(ls -1 "$Diretorio" | grep '\.tar\.gz$' | sort -t'-' -k2,2 -k3,3 -k4,4 | tail -n 1)
+
+# Exibir o arquivo mais recente
+if [ -n "$ArquivoRecente" ]; then
+    # Descompactar o arquivo
+    if tar -xzf "$Diretorio/$ArquivoRecente"  -C "$Diretorio" ; then
+        # Encontrar o diretório descompactado (assumindo que ele é o único novo diretório)
+        PastaDescompactada=$(find "$Diretorio" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)
+
+        # Verificar se a pasta foi encontrada
+        if [ -n "$PastaDescompactada" ]; then
+            # Verificar o arquivo que começa com cliente
+            ClienteArquivo=$(find "$PastaDescompactada" -type f -name "cliente*")
+
+            if [ -n "$ClienteArquivo" ]; then
+                Tamanho=$(stat -c%s "$ClienteArquivo")
+
+                if [ "$Tamanho" -gt 0 ]; then
+                    # Arquivo está com tamanho maior que 0.
+                    echo 1
+                else
+                    # Arquivo corrompido, está com tamanho igual a 0
+                    echo 0
+                fi
+
+            else
+                # Arquivo que começa com 'cliente' não encontrado após a descompactação.
+                echo -1
+            fi
+
+            # Apagar a pasta descompactada
+            rm -rf "$PastaDescompactada"
+        else
+            # Nenhuma pasta descompactada encontrada.
+            echo -2
+        fi
+    else
+        # Erro ao descompactar o arquivo.
+        echo -3
+    fi
+else
+    # Nenhum arquivo encontrado.
+    echo -4
+fi
