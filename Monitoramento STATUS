@@ -1,7 +1,8 @@
 #!/bin/bash
 
+service=$1
 cont=0
-active=$(systemctl status status | grep "Active: activating (auto-restart)" | wc -l)
+active=$(systemctl status $service | grep "Active: activating (auto-restart)" | wc -l)
 
 if [[ $active == 0 ]]; then
         echo 0
@@ -17,8 +18,8 @@ get_last_20_lines() {
 }
 
 # Verifica as entradas específicas nas últimas 20 linhas do arquivo de log do Apache
-var=$(get_last_20_lines | grep -c ' "GET /status.php HTTP/1.1" 200 ')
-var2=$(get_last_20_lines | grep -c ' "GET /status.php HTTP/1.1" 500 ')
+var=$(get_last_20_lines | grep -c ' "GET /'$service'.php HTTP/1.1" 200 ')
+var2=$(get_last_20_lines | grep -c ' "GET /'$service'.php HTTP/1.1" 500 ')
 
 # Se a entrada com status 200 for encontrada
 if [[ $var -ne 0 ]]; then
@@ -33,11 +34,11 @@ else
         cont=$((cont + 1))  # Incrementa a contagem
 
         # Verifica novamente as entradas no log
-        var=$(get_last_20_lines | grep -c ' "GET /status.php HTTP/1.1" 200 ')
-        var2=$(get_last_20_lines | grep -c ' "GET /status.php HTTP/1.1" 500 ')
+        var=$(get_last_20_lines | grep -c ' "GET /'$service'.php HTTP/1.1" 200 ')
+        var2=$(get_last_20_lines | grep -c ' "GET /'$service'.php HTTP/1.1" 500 ')
 
         # Se a contagem de iterações exceder 12, sai do loop
-        if [[ $cont -gt 12 ]]; then
+        if [[ $cont -gt 50 ]]; then
             echo 0
             exit 1
         fi
